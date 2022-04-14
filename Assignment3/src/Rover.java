@@ -275,8 +275,11 @@ public class Rover {
 				Collections.sort(lowest);
 
 				System.out.println("\n\nBetween " + start + " and " + end + ", we have:");
+				if(highStart != null)
 				System.out.println(
 						"Record diff was between " + highStart + " and " + highEnd + " with a diff of " + recordDiff);
+				else
+					System.out.println("Period was shorter than the delta period.");
 				System.out.println("The highest values were " + highest);
 				System.out.println("The lowest values were " + lowest);
 
