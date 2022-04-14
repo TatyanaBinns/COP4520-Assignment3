@@ -16,7 +16,7 @@ Once content with part 1, to run part two:
 
 ## Problem One: What could have Gone Wrong? 
 
-
+The most likely error that occured was that during the removal process, the removal and re-attachment overlapped with a new addition, thus making a present skip over the ordered chain. This would result in a present falling through the gaps.
 
 ## Efficiency
 
