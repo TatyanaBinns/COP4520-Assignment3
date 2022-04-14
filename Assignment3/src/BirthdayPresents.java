@@ -7,11 +7,35 @@ import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
+/**
+ * Main class for the birthday presents problem
+ * 
+ * @author Tatyana Binns
+ */
 public class BirthdayPresents {
 
+	/**
+	 * The guestcount, used in various places
+	 */
 	private static final int GUEST_COUNT = 500_000;
 
+	/**
+	 * A generic concurrent linked list class. This uses atomic compare and set
+	 * whenever altering the structure of the list techniques to ensure correctness.
+	 * 
+	 * @author Tatyana Binns
+	 *
+	 * @param <T> the type of value to store in this list
+	 */
 	public static class ConcurrentLinkedList<T extends Comparable<T>> implements Iterable<T> {
+		/**
+		 * An inner class used to hold values and references to the next item in the
+		 * list.
+		 * 
+		 * @author Tatyana Binns
+		 *
+		 * @param <T> the type of value being stored
+		 */
 		public static class ConcurrentNode<T> {
 			private T value;
 			private AtomicReference<ConcurrentNode<T>> next = new AtomicReference<>();
@@ -121,35 +145,34 @@ public class BirthdayPresents {
 
 		List<String> gifts = new ArrayList<>(GUEST_COUNT);
 
-		System.out.println("["+Instant.now()+"]Initializing gifts...");
+		System.out.println("[" + Instant.now() + "]Initializing gifts...");
 		for (int i = 0; i < GUEST_COUNT; i++)
 			gifts.add(String.format("Gift %6d", i));
 
 		Collections.shuffle(gifts);
 
-		System.out.println("["+Instant.now()+"]Gifts created.");
+		System.out.println("[" + Instant.now() + "]Gifts created.");
 
 		ConcurrentLinkedList<String> orderedChain = new ConcurrentLinkedList<>();
 
 		AtomicInteger gIndex = new AtomicInteger(0);
 
-		
 		List<Thread> threads = new ArrayList<>();
-		for(int i = 0; i < 1; i++)
+		for (int i = 0; i < 1; i++)
 			threads.add(genServant(gIndex, gifts, orderedChain));
-		
-		System.out.println("["+Instant.now()+"]Starting Servants");
-		for(Thread t : threads)
+
+		System.out.println("[" + Instant.now() + "]Starting Servants");
+		for (Thread t : threads)
 			t.start();
 
-		for(Thread t : threads)
+		for (Thread t : threads)
 			try {
 				t.join();
 			} catch (InterruptedException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
-		System.out.println("["+Instant.now()+"]Complete");
+		System.out.println("[" + Instant.now() + "]Complete");
 	}
 
 	private static Thread genServant(AtomicInteger gIndex, List<String> gifts,
@@ -158,7 +181,6 @@ public class BirthdayPresents {
 			while (gIndex.get() < gifts.size() || !orderedChain.isEmpty()) {
 
 				int action = ThreadLocalRandom.current().nextInt(3);
-//				System.out.println("On Index: " + gIndex.get()+", taking action "+action);
 
 				switch (action) {
 				// Take a present, and add it to the ordered chain
@@ -167,9 +189,6 @@ public class BirthdayPresents {
 						continue;
 					String giftFromPile = gifts.get(gIndex.getAndIncrement());
 					orderedChain.insert(giftFromPile);
-//					System.out.println("\nAdded " + giftFromPile + " to chain:");
-//					for (String s : orderedChain)
-//						System.out.println(s);
 					break;
 				// Write a thankyou card for the gift
 				case 1:
@@ -177,11 +196,9 @@ public class BirthdayPresents {
 					// Thank you whoever this is!
 					if (giftFromChain != null)
 						;// System.out.println("Thanks for " + giftFromChain);
-//					System.out.println("\nWrote card for " + giftFromChain + ", remaining gifts on chain:");
-//					for (String s : orderedChain)
-//						System.out.println(s);
 					break;
 				case 2:
+					// Check if a specific gift happens to be in the ordered chain
 					if (orderedChain
 							.contains(String.format("Gift %6d", ThreadLocalRandom.current().nextInt(GUEST_COUNT))))
 						;
