@@ -9,7 +9,7 @@ import java.util.concurrent.atomic.AtomicReference;
 
 public class BirthdayPresents {
 
-	private static final int GUEST_COUNT = 5_000_000;
+	private static final int GUEST_COUNT = 500_000;
 
 	public static class ConcurrentLinkedList<T extends Comparable<T>> implements Iterable<T> {
 		public static class ConcurrentNode<T> {
