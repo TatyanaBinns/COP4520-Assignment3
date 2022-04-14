@@ -1,6 +1,7 @@
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.NavigableMap;
@@ -12,10 +13,10 @@ import java.util.concurrent.locks.ReentrantLock;
 
 public class Rover {
 
-	private static final int TWELVE_SECONDS = 20;
-	private static final int ONE_MINUTE = 100;
-	private static final int TEN_MINUTES = 10_00;
-	private static final int ONE_HOUR = 60_00;
+	private static final int TWELVE_SECONDS = 200;
+	private static final int ONE_MINUTE = 1000;
+	private static final int TEN_MINUTES = 10_000;
+	private static final int ONE_HOUR = 60_000;
 
 	/**
 	 * A generic concurrent linked list class. This uses atomic compare and set
@@ -181,6 +182,11 @@ public class Rover {
 		public int compareTo(TempReading o) {
 			return this.time.compareTo(o.time);
 		}
+
+		@Override
+		public String toString() {
+			return "TempReading [reading=" + reading + ", time=" + time + "]";
+		}
 	}
 
 	public static class Stats {
@@ -195,6 +201,7 @@ public class Rover {
 		}
 
 		public void add(TempReading value) {
+			System.out.println("Reading: "+ value);
 			List<Integer> l = readings.get(value.getTime());
 			if (l == null) {
 				l = new ArrayList<>();
@@ -203,8 +210,78 @@ public class Rover {
 			l.add(value.getReading());
 		}
 
-		public void output() {
+		private static Integer min(List<Integer> list) {
+			if (list.isEmpty())
+				return Integer.MAX_VALUE;
+			if (list.size() == 1)
+				return list.get(0);
+			int min = list.get(0);
+			for (int i : list)
+				if (i < min)
+					min = i;
+			return min;
+		}
 
+		private static Integer max(List<Integer> list) {
+			if (list.isEmpty())
+				return Integer.MIN_VALUE;
+			if (list.size() == 1)
+				return list.get(0);
+			int max = list.get(0);
+			for (int i : list)
+				if (i > max)
+					max = i;
+			return max;
+		}
+
+		public void output() {
+			System.out.println("Have a total of " + this.readings.size() + " readings from " + readings.firstKey()
+					+ " to " + readings.lastKey());
+			Instant start = readings.firstKey();
+
+			while (start.isBefore(readings.lastKey())) {
+
+				Instant end = readings.floorKey(start.plus(highLowPeriod));
+
+				List<Integer> highest = new ArrayList<>();
+				List<Integer> lowest = new ArrayList<>();
+				Instant highStart = null, highEnd = null;
+				int recordDiff = 0;
+
+				for (Instant key = start; key.isBefore(end); key = readings.higherKey(key)) {
+					if (key.minus(deltaPeriod).isAfter(start)) {
+						int curDiff = Math.abs(min(readings.get(key))
+								- max(readings.get(readings.ceilingKey(key.minus(deltaPeriod)))));
+						if (curDiff > recordDiff) {
+							highStart = key.minus(deltaPeriod);
+							highEnd = key;
+							recordDiff = curDiff;
+						}
+					}
+					for (int reading : readings.get(key)) {
+						if (highest.isEmpty() || reading > min(highest)) {
+							if (highest.size() > 4)
+								highest.remove(min(highest));
+							highest.add(reading);
+						}
+						if (lowest.isEmpty() || reading < max(lowest)) {
+							if (lowest.size() > 4)
+								lowest.remove(max(lowest));
+							lowest.add(reading);
+						}
+					}
+				}
+				Collections.sort(highest);
+				Collections.sort(lowest);
+
+				System.out.println("\n\nBetween " + start + " and " + end + ", we have:");
+				System.out.println(
+						"Record diff was between " + highStart + " and " + highEnd + " with a diff of " + recordDiff);
+				System.out.println("The highest values were " + highest);
+				System.out.println("The lowest values were " + lowest);
+
+				start = end;
+			}
 		}
 	}
 
@@ -233,7 +310,9 @@ public class Rover {
 					} else if (nextReadingTime.minus(readingSoon).isBefore(Instant.now()))
 						continue;
 					else if (!readings.isEmpty() && statsLock.tryLock()) {
-						stats.add(readings.pollFirst());
+						TempReading r = readings.pollFirst();
+						if (r != null)
+							stats.add(r);
 						statsLock.unlock();
 					}
 			}));
@@ -242,7 +321,7 @@ public class Rover {
 		for (Thread t : threads)
 			t.start();
 		try {
-			Thread.sleep(ONE_HOUR * 3);
+			Thread.sleep(ONE_HOUR*3);
 		} catch (InterruptedException e) {
 			e.printStackTrace();
 		}
